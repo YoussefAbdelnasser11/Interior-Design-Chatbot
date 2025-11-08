@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 
 # Config
-API_URL = os.getenv("BACKEND_URL", "https://0ac6237c043a.ngrok-free.app")
+API_URL = os.getenv("BACKEND_URL", "https://8faf0842831b.ngrok-free.app")
 CHAT_ENDPOINT = f"{API_URL}/chat"
 
 # Page configuration

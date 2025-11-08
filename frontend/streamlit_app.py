@@ -4,7 +4,7 @@ import requests
 import os
 
 # Config
-API_URL = os.getenv("BACKEND_URL", "http://localhost:8000")  # use BACKEND_URL env var in deployment
+API_URL = os.getenv("BACKEND_URL", "https://0ac6237c043a.ngrok-free.app")  # use BACKEND_URL env var in deployment
 CHAT_ENDPOINT = f"{API_URL}/chat"
 
 st.set_page_config(page_title="Interior Design Chatbot", layout="centered")

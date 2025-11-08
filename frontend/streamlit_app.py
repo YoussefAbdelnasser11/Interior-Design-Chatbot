@@ -1,276 +1,286 @@
 import streamlit as st
 import requests
-import os
+import json
 from datetime import datetime
 
-# Config
-API_URL = os.getenv("BACKEND_URL", "https://8faf0842831b.ngrok-free.app")
-CHAT_ENDPOINT = f"{API_URL}/chat"
-
-# Page configuration
+# إعداد صفحة Streamlit
 st.set_page_config(
-    page_title="Interior Design Assistant",
-    page_icon="🛋️",
+    page_title="نظام التصميم الداخلي الذكي",
+    page_icon="🎨",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+# تخصيص التصميم باستخدام CSS
 st.markdown("""
 <style>
     .main-header {
-        text-align: center;
-        padding: 2rem 0;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 15px;
+        font-size: 3rem;
+        color: #2E86AB;
+        text-align: right;
         margin-bottom: 2rem;
-        color: white;
+        font-weight: bold;
     }
-    .user-message {
+    .sub-header {
+        font-size: 1.5rem;
+        color: #A23B72;
+        text-align: right;
+        margin-bottom: 1rem;
+        font-weight: bold;
+    }
+    .design-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 15px;
         color: white;
-        padding: 12px 18px;
-        border-radius: 18px 18px 0 18px;
-        margin: 8px 0;
-        max-width: 80%;
-        margin-left: auto;
+        margin: 1rem 0;
         text-align: right;
     }
-    .assistant-message {
-        background: #f0f2f6;
-        color: #262730;
-        padding: 12px 18px;
-        border-radius: 18px 18px 18px 0;
-        margin: 8px 0;
-        max-width: 80%;
-        text-align: left;
-        border: 1px solid #e6e6e6;
-    }
-    .chat-container {
-        height: 600px;
-        overflow-y: auto;
-        padding: 20px;
-        border: 1px solid #e6e6e6;
+    .result-card {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        padding: 2rem;
         border-radius: 15px;
-        margin-bottom: 20px;
-        background: white;
+        color: white;
+        margin: 1rem 0;
+        text-align: right;
     }
-    .stButton button {
+    .footer {
+        text-align: left;
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin-top: 3rem;
+        padding: 1rem;
+        border-top: 2px solid #2E86AB;
+    }
+    .stButton>button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border: none;
+        padding: 0.5rem 2rem;
         border-radius: 25px;
-        padding: 10px 25px;
-        font-weight: 600;
+        font-size: 1.1rem;
     }
     .sidebar .sidebar-content {
-        background: #f8f9fa;
-    }
-    .design-tips {
-        background: #e8f4fd;
-        padding: 15px;
-        border-radius: 10px;
-        border-right: 4px solid #667eea;
-        margin: 10px 0;
+        background: linear-gradient(180deg, #2E86AB 0%, #A23B72 100%);
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Initialize session state
-if "history" not in st.session_state:
-    st.session_state.history = []
-if "current_input" not in st.session_state:
-    st.session_state.current_input = ""
+# العنوان الرئيسي
+st.markdown('<h1 class="main-header">🎨 نظام التصميم الداخلي الذكي</h1>', unsafe_allow_html=True)
 
-def send_message(user_message: str):
-    """Send message to backend and handle response"""
-    payload = {"message": user_message, "history": st.session_state.history}
-    try:
-        with st.spinner("🔄 جاري تحليل طلبك وإعداد الاقتراحات..."):
-            r = requests.post(CHAT_ENDPOINT, json=payload, timeout=30)
-            r.raise_for_status()
-            data = r.json()
-            reply = data.get("reply", "")
-            
-            # Append to history with timestamp
-            timestamp = datetime.now().strftime("%H:%M")
-            st.session_state.history.append({
-                "role": "user", 
-                "content": user_message,
-                "timestamp": timestamp
-            })
-            st.session_state.history.append({
-                "role": "assistant", 
-                "content": reply,
-                "timestamp": timestamp
-            })
-            
-            # Clear input after successful send
-            st.session_state.current_input = ""
-            
-    except requests.exceptions.RequestException as e:
-        st.error(f"❌ خطأ في الاتصال: {str(e)}")
-    except Exception as e:
-        st.error(f"❌ حدث خطأ غير متوقع: {str(e)}")
+# معلومات السيرفر (يجب تعديلها حسب عنوانك)
+API_URL = "https://pausal-inexpertly-ernesto.ngrok-free.dev"
+API_KEY = "secret123"
 
-def clear_chat():
-    """Clear chat history"""
-    st.session_state.history = []
-    st.session_state.current_input = ""
-
-def export_chat():
-    """Export chat history to text file"""
-    if st.session_state.history:
-        chat_text = "Interior Design Chat History\n"
-        chat_text += "=" * 30 + "\n\n"
-        
-        for msg in st.session_state.history:
-            role = "You" if msg["role"] == "user" else "Design Assistant"
-            chat_text += f"{role} ({msg.get('timestamp', '')}):\n"
-            chat_text += f"{msg['content']}\n"
-            chat_text += "-" * 50 + "\n"
-        
-        return chat_text
-    return ""
-
-# Sidebar
+# الشريط الجانبي
 with st.sidebar:
-    st.markdown("### 🎨 أدوات التصميم")
-    
-    st.markdown("#### 💡 نصائح سريعة")
-    st.markdown("""
-    <div class="design-tips">
-    • اذكر أبعاد الغرفة (الطول × العرض × الارتفاع)<br>
-    • حدد اتجاه النوافذ والإضاءة الطبيعية<br>
-    • اختر نمط التصميم المفضل<br>
-    • حدد الميزانية التقريبية<br>
-    • اذكر الألوان المفضلة<br>
-    • اذكر عدد الأشخاص المستخدمين للغرفة
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("#### 🏠 أنماط التصميم")
-    design_styles = [
-        "🏛️ كلاسيكي", "🔄 مودرن", "🌿 مينيمالست", 
-        "🇸🇪 سكاندينيفيان", "🏭 صناعي", "🏖️ ساحلي",
-        "🌾 ريفي", "🎨 بوهو", "🌏 آسيوي"
-    ]
-    
-    for style in design_styles:
-        st.write(f"• {style}")
+    st.markdown("### ⚙️ الإعدادات")
+    st.info("**السيرفر:** يعمل بنجاح ✅")
+    st.info(f"**الوقت:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     st.markdown("---")
+    st.markdown("### 📊 إحصائيات النظام")
+    if 'request_count' not in st.session_state:
+        st.session_state.request_count = 0
+    st.metric("عدد الطلبات", st.session_state.request_count)
     
-    # Chat management
+    st.markdown("---")
+    st.markdown("### 🎯 التعليمات")
+    st.write("""
+    1. اختر نوع الخدمة
+    2. املأ البيانات المطلوبة
+    3. اضغط على زر التشغيل
+    4. انتظر النتائج
+    """)
+
+# تبويبات الخدمات
+tab1, tab2, tab3 = st.tabs(["🏠 تصميم الغرف", "📝 توليد النصوص", "ℹ️ معلومات النظام"])
+
+with tab1:
+    st.markdown('<h2 class="sub-header">تصميم الغرف والديكور</h2>', unsafe_allow_html=True)
+    
     col1, col2 = st.columns(2)
+    
     with col1:
-        if st.button("🗑️ مسح المحادثة", use_container_width=True):
-            clear_chat()
-            st.rerun()
+        room_type = st.selectbox(
+            "نوع الغرفة 🏠",
+            ["غرفة معيشة", "غرفة نوم", "مطبخ", "غرفة طعام", "غرفة أطفال", "حمام", "غرفة دراسة"]
+        )
+        
+        room_size = st.text_input("المساحة بالمتر 📏", "٦×٤ متر")
+        
+        budget = st.selectbox(
+            "الميزانية 💰",
+            ["محدودة", "متوسطة", "مرتفعة", "فاخرة"]
+        )
     
     with col2:
-        chat_text = export_chat()
-        if chat_text:
-            st.download_button(
-                label="📥 حفظ المحادثة",
-                data=chat_text,
-                file_name=f"design_chat_{datetime.now().strftime('%Y%m%d_%H%M')}.txt",
-                mime="text/plain",
-                use_container_width=True
-            )
-
-# Main content
-st.markdown('<div class="main-header"><h1>🛋️ مساعد التصميم الداخلي</h1><p>اسأل عن تصميم غرفتك - اكتب بالعربية أو الإنجليزية</p></div>', unsafe_allow_html=True)
-
-# Chat container
-with st.container():
-    st.markdown("### 💬 محادثة التصميم")
+        style_preference = st.selectbox(
+            "النمط المفضل 🎭",
+            ["مودرن", "كلاسيكي", "مينيمالست", "سكاندينيفيان", "صناعي", "بوهو", "ريفي", "أي نمط"]
+        )
+        
+        additional_requirements = st.text_area(
+            "المتطلبات الإضافية 📝",
+            "مساحة مريحة، إضاءة جيدة، تخزين عملي"
+        )
     
-    # Chat messages display
-    chat_container = st.container()
-    with chat_container:
-        if st.session_state.history:
-            st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-            
-            for msg in st.session_state.history:
-                if msg["role"] == "user":
-                    st.markdown(f"""
-                    <div class="user-message">
-                        <div style="font-size: 0.8em; opacity: 0.8;">أنت • {msg.get('timestamp', '')}</div>
-                        {msg['content']}
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.markdown(f"""
-                    <div class="assistant-message">
-                        <div style="font-size: 0.8em; opacity: 0.8;">المساعد • {msg.get('timestamp', '')}</div>
-                        {msg['content']}
-                    </div>
-                    """, unsafe_allow_html=True)
-            
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            # Auto scroll to bottom
-            st.markdown("""
-            <script>
-                var chatContainer = window.parent.document.querySelector('.chat-container');
-                if (chatContainer) {
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-                }
-            </script>
-            """, unsafe_allow_html=True)
+    if st.button("🎨 إنشاء التصميم", use_container_width=True):
+        if room_type and room_size and budget:
+            with st.spinner("جاري إنشاء التصميم المثالي لك..."):
+                try:
+                    headers = {
+                        "Authorization": f"Bearer {API_KEY}",
+                        "Content-Type": "application/json"
+                    }
+                    
+                    data = {
+                        "room_type": room_type,
+                        "room_size": room_size,
+                        "budget": budget,
+                        "style_preference": style_preference,
+                        "additional_requirements": additional_requirements
+                    }
+                    
+                    response = requests.post(f"{API_URL}/design", headers=headers, json=data)
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        st.session_state.request_count += 1
+                        
+                        st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                        st.markdown(f"### 🎯 تصميم {room_type}")
+                        st.markdown("---")
+                        st.markdown(result['design_recommendations'])
+                        st.markdown('</div>', unsafe_allow_html=True)
+                        
+                        # تحميل النتيجة
+                        st.download_button(
+                            label="📥 تحميل التصميم",
+                            data=result['design_recommendations'],
+                            file_name=f"تصميم_{room_type}_{datetime.now().strftime('%Y%m%d_%H%M')}.txt",
+                            mime="text/plain"
+                        )
+                    else:
+                        st.error(f"خطأ في السيرفر: {response.status_code}")
+                        
+                except Exception as e:
+                    st.error(f"حدث خطأ: {str(e)}")
         else:
-            # Welcome message when no chat history
-            st.markdown("""
-            <div style="text-align: center; padding: 40px; color: #666;">
-                <h3>🎉 أهلاً بك في مساعد التصميم الداخلي!</h3>
-                <p>ابدأ بوصف غرفتك وسأساعدك في تصميمها بشكل احترافي</p>
-                <p>💡 استخدم الشريط الجانبي للحصول على نصائح سريعة</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.warning("⚠️ يرجى ملء جميع الحقول المطلوبة")
 
-# Input area
-st.markdown("### ✍️ اكتب وصف الغرفة")
-
-input_col1, input_col2 = st.columns([4, 1])
-with input_col1:
-    user_input = st.text_area(
-        "وصف الغرفة:",
-        value=st.session_state.current_input,
-        height=120,
-        placeholder="مثال: لدي غرفة معيشة 4×5 متر، بها نافذة كبيرة اتجاه الشمال، أريد تصميم مودرن بميزانية متوسطة...",
-        label_visibility="collapsed"
+with tab2:
+    st.markdown('<h2 class="sub-header">توليد النصوص الذكي</h2>', unsafe_allow_html=True)
+    
+    prompt = st.text_area(
+        "اكتب طلبك هنا ✍️",
+        "اكتب عن أهمية التصميم الداخلي في تحسين جودة الحياة...",
+        height=150
     )
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        max_length = st.slider("الطول الأقصى للنص", 100, 2000, 500)
+    
+    if st.button("🪄 توليد النص", use_container_width=True):
+        if prompt:
+            with st.spinner("جاري توليد النص..."):
+                try:
+                    headers = {
+                        "Authorization": f"Bearer {API_KEY}",
+                        "Content-Type": "application/json"
+                    }
+                    
+                    data = {
+                        "prompt": prompt,
+                        "max_length": max_length
+                    }
+                    
+                    response = requests.post(f"{API_URL}/generate", headers=headers, json=data)
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        st.session_state.request_count += 1
+                        
+                        st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                        st.markdown("### 📖 النص المُولد")
+                        st.markdown("---")
+                        st.markdown(result['generated_text'])
+                        st.markdown('</div>', unsafe_allow_html=True)
+                        
+                        # تحميل النص
+                        st.download_button(
+                            label="📥 تحميل النص",
+                            data=result['generated_text'],
+                            file_name=f"نص_مولد_{datetime.now().strftime('%Y%m%d_%H%M')}.txt",
+                            mime="text/plain"
+                        )
+                    else:
+                        st.error(f"خطأ في السيرفر: {response.status_code}")
+                        
+                except Exception as e:
+                    st.error(f"حدث خطأ: {str(e)}")
+        else:
+            st.warning("⚠️ يرجى كتابة prompt")
 
-with input_col2:
-    st.markdown("<br>", unsafe_allow_html=True)
-    send_button = st.button("🚀 إرسال", use_container_width=True, type="primary")
+with tab3:
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown('<div class="design-card">', unsafe_allow_html=True)
+        st.markdown("### 🚀 معلومات النظام")
+        st.markdown("""
+        - **النموذج:** Mistral-Nemo-Instruct
+        - **اللغة:** العربية
+        - **الخدمات:** تصميم داخلي + توليد نصوص
+        - **الحالة:** 🟢 نشط
+        """)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        st.markdown('<div class="design-card">', unsafe_allow_html=True)
+        st.markdown("### 💡 نصائح سريعة")
+        st.markdown("""
+        - كن محدداً في وصف المتطلبات
+        - اختر الميزانية المناسبة
+        - اذكر الاستخدام اليومي للغرفة
+        - حدد الألوان المفضلة إذا أمكن
+        """)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown('<div class="design-card">', unsafe_allow_html=True)
+        st.markdown("### 🎭 أنماط التصميم")
+        st.markdown("""
+        - **مودرن:** خطوط نظيفة، ألوان محايدة
+        - **كلاسيكي:** تفاصيل فاخرة، ألوان دافئة
+        - **مينيمالست:** بساطة، مساحات مفتوحة
+        - **سكاندينيفيان:** فاتح، طبيعي، عملي
+        - **صناعي:** خام، معدني، مكشوف
+        """)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # زر فحص الحالة
+        if st.button("🔍 فحص حالة السيرفر", use_container_width=True):
+            try:
+                response = requests.get(f"{API_URL}/health")
+                if response.status_code == 200:
+                    st.success("✅ السيرفر يعمل بشكل طبيعي")
+                    st.json(response.json())
+                else:
+                    st.error("❌ هناك مشكلة في السيرفر")
+            except:
+                st.error("❌ لا يمكن الوصول إلى السيرفر")
 
-# Quick suggestion buttons
-st.markdown("#### 💡 اقتراحات سريعة")
-quick_cols = st.columns(4)
-quick_suggestions = [
-    "تصميم غرفة معيشة 4×5 متر",
-    "ألوان مناسبة لغرفة نوم",
-    "ديكور مودرن لمكتب صغير", 
-    "ترتيب أثاث غرفة مستطيلة"
-]
-
-for col, suggestion in zip(quick_cols, quick_suggestions):
-    with col:
-        if st.button(suggestion, use_container_width=True):
-            st.session_state.current_input = suggestion
-            st.rerun()
-
-# Handle send action
-if send_button and user_input.strip():
-    send_message(user_input.strip())
-    st.rerun()
-
-# Footer
+# التذييل
 st.markdown("---")
-st.markdown("""
-<div style="text-align: center; color: #666; font-size: 0.9em;">
-    <p>🛋️ مساعد التصميم الداخلي - قدم وصفاً دقيقاً للحصول على أفضل النتائج</p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown(
+    '<div class="footer">'
+    'تم التطوير بواسطة <strong>Eng. Youssef Abdelnasser</strong> 🚀 | '
+    'نظام التصميم الداخلي الذكي'
+    '</div>',
+    unsafe_allow_html=True
+)
+
+# تأثيرات إضافية
+st.balloons()
